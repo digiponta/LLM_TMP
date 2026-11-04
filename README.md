@@ -371,3 +371,56 @@ python evaluate_sd_candidates.py --provider llm `
 No improvement to LLM candidate-generation quality is claimed by this
 diagnostic patch. A separate SD-specific supervised training/evaluation phase
 will likely be necessary for the v0.3 language model.
+
+
+## Compact SD supervised learning (experimental)
+
+Use short SD output instead of verbose JSON to make structured generation
+feasible for the small v0.3-style causal Transformer:
+
+```text
+猫が魚を食べる。 -> S(CAT,FISH,EAT)
+猫が魚を食べると、犬が鳥を見る。
+  -> T(S(CAT,FISH,EAT),S(DOG,BIRD,WATCH))
+猫が魚を食べる、そして犬が鳥を見る。
+  -> A(S(CAT,FISH,EAT),S(DOG,BIRD,WATCH))
+```
+
+`S` corresponds to `T-SOV`, `T` to `T-THEN`, and `A` to
+`T-AND`. The short notation is parsed by `compact_sd.py` and
+revalidated by the existing atomic `accept_candidate` engine. Untrusted
+unknown IDs, malformed nested codes, and surface mismatches are rejected.
+
+`train_compact_sd.py` generates syntactic input/output pairs from the
+registered toy vocabulary. It trains a **separate** model and character
+tokenizer, with loss masked on the prompt tokens and applied only to the
+SD-output tokens. It does **not** fine-tune the old general-purpose v0.3
+checkpoint; its vocabulary is not assumed compatible.
+
+```powershell
+git pull origin main
+python -m unittest -v test_compact_sd.py
+python compact_sd.py --text "猫が魚を食べる。" --compact "S(CAT,FISH,EAT)"
+python train_compact_sd.py train --device auto --epochs 15
+python train_compact_sd.py evaluate --device auto
+```
+
+Default model outputs:
+
+- `model/sd-compact/model-sd-compact.pt`
+- `model/sd-compact/tokenizer-sd-compact.json`
+- `model/sd-compact/split-sd-compact.json`
+- `model/sd-compact/training-sd-compact.json`
+- `results/sd_compact_eval.json`
+
+**Limitations:** No independent held-out lexicon/grammar is used. Train and
+development splits use disjoint *sentences*, but share all atoms, templates,
+and a generated data grammar. The measured metric is exact code generation
+and SD Engine acceptance on the development split, not real-world semantic
+understanding or factual accuracy. The runtime may reject unknown input
+characters. No evaluation result is claimed until the model is trained and
+the evaluation command runs.
+
+The next phase is a human-authored frozen test split with new paraphrases,
+unseen compositions, unsupported syntax and explicit unknown cases, followed
+by testing a version trained on more natural language.
