@@ -196,3 +196,41 @@ an improvement in LLM understanding or independent generalization.
 Future work: independently authored multi-turn and paraphrase holdouts,
 balanced baseline prompting, semantic-identity collisions, negation,
 nested grammar templates, and provenance-aware SKI exchange.
+
+
+## Recursive linked SD composition (next experiment)
+
+The next implementation is separated from the original eight-case benchmark.
+All templates are SD nodes; sentence SDs link to existing template, entity,
+predicate and child-expression SDs. `compose()` interns identical structures
+to the same SD ID. `decompose()` and `recompose()` check round-trip identity;
+`render()` detects reference cycles.
+
+Run from the repository root:
+
+```powershell
+git pull origin main
+python -m unittest -v test_compare_four_modes.py test_recursive_sd.py test_compare_recursive_sd.py
+python compare_recursive_sd.py --structural-only
+```
+
+To include raw LLM mode A, with compatible local model/tokenizer:
+
+```powershell
+python compare_recursive_sd.py --checkpoint model/model-gpu-v0.3.pt --tokenizer model/tokenizer.json --device auto
+```
+
+The new run writes `results/recursive_sd_development.json`.
+Modes B/C perform their original non-compositional retrieval, and mode D
+constructs nested sentences with template SDs, under the same prompts.
+The new dataset has eight two-clause composition requests plus two unknown
+fact questions and one unsupported-verb request.
+
+**Evaluation boundaries:** These are hand-authored, template-shaped
+**development** examples, not a truly independent holdout. This version
+demonstrates graph-level reuse and recursion, **not** free-form parsing,
+learning of new grammar, factual verification, or an improvement in LLM
+reasoning. No predicted values or measurements are reported in advance of
+running the code. For independent validation, a reviewer should prepare
+separately approved and frozen queries not accessed when tuning the parser,
+templates, or SD linking policy.
