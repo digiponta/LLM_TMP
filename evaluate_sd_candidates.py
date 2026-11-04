@@ -50,7 +50,7 @@ def evaluate(provider_kind="rule", checkpoint=None, tokenizer=None, device="auto
             try:
                 candidate = proposer.propose(text)
             except (CandidateRejected, ValueError, TypeError) as exc:
-                result = {"status": "REJECTED", "reason": type(exc).__name__}
+                result = {"status": "REJECTED", "reason": str(exc) or type(exc).__name__}
             else:
                 result = accept_candidate(graph, text, candidate)
             accepted = result["status"] == "ACCEPTED"
@@ -59,12 +59,19 @@ def evaluate(provider_kind="rule", checkpoint=None, tokenizer=None, device="auto
                 "text": text, "supported": supported,
                 "status": result["status"],
                 "reason": result.get("reason"),
+                "llm_diagnostic": getattr(proposer, "last_diagnostic", None) if provider_kind == "llm" else None,
                 "correct": (accepted == supported) and unchanged_if_rejected,
                 "unchanged_if_rejected": unchanged_if_rejected,
             })
     good = [x for x in rows if x["supported"]]
     bad = [x for x in rows if not x["supported"]]
+    reasons = {}
+    for row in rows:
+        if row["status"] == "REJECTED":
+            key = row["reason"] or "UNKNOWN_REASON"
+            reasons[key] = reasons.get(key, 0) + 1
     return {
+        "rejection_reasons": reasons,
         "status": "DEVELOPMENT_ONLY_NOT_INDEPENDENT",
         "provider": provider_kind, "total": len(rows),
         "supported_accept_rate": sum(x["status"] == "ACCEPTED" for x in good) / len(good),
