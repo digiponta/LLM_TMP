@@ -175,7 +175,7 @@ def evaluate(mode, cases, sd, llm=None):
         elif mode == "B":
             answer = lexical_memory(question, sd)
         elif mode == "C":
-            answer = sd.resolve_fact(question) if case["kind"] != "compose" else None
+            answer = sd.resolve_fact(question)
         elif mode == "D":
             # Routing by *request syntax*, not hidden benchmark labels.
             answer = (sd.compose_requested(question) if "文を作って" in question
