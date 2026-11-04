@@ -280,3 +280,66 @@ Planned next: frozen human-authored paraphrase/negation/multi-clause evaluation;
 separate meaning equivalence from exact textual roundtrip; optional LLM
 candidate extraction with deterministic structural checks; and SKI exchange
 of locally unique SD IDs with explicit provenance and cross-VM mapping.
+
+
+## LLM -> untrusted SD candidate -> deterministic validation (experimental)
+
+`sd_candidate_pipeline.py` introduces an explicit boundary between a
+**proposer** and the **SD Engine**. Two proposers are supported:
+
+- `rule`: an intentionally limited deterministic baseline for known SOV
+  sentences and two-clause sentences.
+- `llm`: invokes the trained local Transformer to suggest a JSON SD tree.
+  The original v0.3 model is **not guaranteed to produce JSON**, so failures
+  are rejected; no fallback silently replaces the LLM's answer.
+
+The candidate schema is:
+
+```json
+{
+  "tree": {
+    "template_ref": "T-SOV",
+    "bindings": {
+      "subject": {"sd_ref": "CAT"},
+      "object": {"sd_ref": "FISH"},
+      "verb": {"sd_ref": "EAT"}
+    }
+  }
+}
+```
+
+Grammar templates are SDs, while compound SDs link to existing nodes.
+The validator checks known SD IDs, role/type constraints, supported
+templates, maximum depth/nodes, and **exact natural-language re-rendering**.
+All modifications are staged and merged only upon successful validation.
+A structurally accepted sentence is an *unverified expression* and never
+an automatically approved fact. The acceptance check is a surface
+round-trip, not proof of semantic equivalence or correctness.
+
+Run the new tests alongside the existing 32:
+
+```powershell
+git pull origin main
+python -m unittest -v test_compare_four_modes.py test_recursive_sd.py test_compare_recursive_sd.py test_japanese_sd_parser.py test_sd_candidate_pipeline.py
+python sd_candidate_pipeline.py --provider rule --text "猫が魚を食べると、犬が鳥を見る。"
+python evaluate_sd_candidates.py --provider rule
+```
+
+With a compatible model and tokenizer on disk, test actual candidate
+generation (this may be rejected for poor or non-JSON output):
+
+```powershell
+python sd_candidate_pipeline.py --provider llm --checkpoint model/model-gpu-v0.3.pt --tokenizer model/tokenizer.json
+python evaluate_sd_candidates.py --provider llm --checkpoint model/model-gpu-v0.3.pt --tokenizer model/tokenizer.json
+```
+
+The development evaluation includes 8 supported and 5 unsupported
+sentences. These are hand-curated samples, **not independent holdout**.
+The rule-provider result cannot be used as evidence of LLM improvement.
+The LLM-provider acceptance rate should be reported separately and only
+after running it.
+
+Planned: better structured-output extraction, independently frozen
+paraphrase and negation sets, semantic-equivalence checks independent of
+exact string matching, meaning-ID resolution under ambiguity, and
+provenance-preserving SKI synchronization.
