@@ -234,3 +234,49 @@ reasoning. No predicted values or measurements are reported in advance of
 running the code. For independent validation, a reviewer should prepare
 separately approved and frozen queries not accessed when tuning the parser,
 templates, or SD linking policy.
+
+
+## Japanese natural language -> linked SD -> natural language (experimental)
+
+This stage adds conservative recognition for canonical Japanese SOV sentences
+and two-clause conjunctions. It is the inverse of the previously implemented
+template renderer **only for its supported grammar**.
+
+New files:
+- `japanese_sd_parser.py`: parses known surface expressions into recursive
+  linked SD; returns an SD tree and round-trip result.
+- `test_japanese_sd_parser.py`: parsing, SD sharing, ambiguity, malformed
+  input, and unknown-fact safety regression tests.
+- `evaluate_japanese_sd.py`: generated development cases (not an independent
+  holdout), including unsupported examples.
+
+Run:
+
+```powershell
+git pull origin main
+python -m unittest -v test_compare_four_modes.py test_recursive_sd.py test_compare_recursive_sd.py test_japanese_sd_parser.py
+python japanese_sd_parser.py --text "猫が魚を食べると、犬が鳥を見る。"
+python evaluate_japanese_sd.py --nested-limit 50
+```
+
+Reports:
+- `results/japanese_sd_roundtrip.json`
+- `results/japanese_sd_development.json`
+
+Acceptance requires exact surface round-trip using the registered grammar
+templates and uniquely identified lexical SD nodes. Parsing reuses existing SD
+IDs; repeated parses do not duplicate equivalent SD graphs. Unknown or
+ambiguous lexical items, unsupported grammar and three-clause inputs are
+rejected without partially creating nodes. All constructed propositions
+remain **unverified expressions**, not asserted factual knowledge.
+
+**Important:** At this stage, the natural-language parser is a rule-based
+recognizer; the LLM is **not** used to infer SD structure. The prior four-mode
+comparison and its metrics remain unchanged. The development sweep reuses the
+same grammar and lexicon as the implementation and therefore must not be
+presented as an independent generalization test.
+
+Planned next: frozen human-authored paraphrase/negation/multi-clause evaluation;
+separate meaning equivalence from exact textual roundtrip; optional LLM
+candidate extraction with deterministic structural checks; and SKI exchange
+of locally unique SD IDs with explicit provenance and cross-VM mapping.
