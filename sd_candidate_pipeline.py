@@ -153,6 +153,7 @@ class LLMCandidateProposer:
     def __init__(self, checkpoint, tokenizer, device="auto"):
         from compare_four_modes import LLMAdapter
         self.adapter = LLMAdapter(checkpoint, tokenizer, device, 180)
+        self.last_diagnostic = None
 
     def propose(self, text):
         # Small v0.3 models are not instruction-tuned for JSON and may fail.
@@ -165,7 +166,15 @@ class LLMCandidateProposer:
             "Verb IDs: EAT=食べる WATCH=見る. "
             "No invented IDs. Input: " + text
         )
+        ids = self.adapter.tokenizer.encode(prompt, add_bos=True)
+        unknown_tokens = sum(token == self.adapter.tokenizer.unk_id for token in ids)
         response = self.adapter.answer(prompt)
+        self.last_diagnostic = {
+            "prompt_chars": len(prompt),
+            "unknown_prompt_tokens": unknown_tokens,
+            "response_chars": len(response) if isinstance(response, str) else 0,
+            "response_preview": (response[:160] if isinstance(response, str) else None),
+        }
         return load_candidate(response)
 
 
