@@ -343,3 +343,31 @@ Planned: better structured-output extraction, independently frozen
 paraphrase and negation sets, semantic-equivalence checks independent of
 exact string matching, meaning-ID resolution under ambiguity, and
 provenance-preserving SKI synchronization.
+
+
+### Candidate failure diagnostics (post initial 0/8 LLM acceptance)
+
+The LLM-based development run initially rejected all eight supported inputs,
+while the rule-based proposer accepted all eight. The 5/5 unsupported
+rejections in the LLM run **do not** demonstrate understanding, because the
+LLM rejected every sample. The earlier evaluator recorded the unhelpful generic
+`CandidateRejected` class name for all failures.
+
+`evaluate_sd_candidates.py` now emits a `rejection_reasons` histogram and
+the concrete exception reason. With `--provider llm`, it also records:
+`unknown_prompt_tokens`, `prompt_chars`, `response_chars`, and a bounded
+`response_preview` (first 160 characters). This distinguishes incompatible
+tokenizer prompts from malformed model output. The recorded preview is
+development-only and may contain model-generated text.
+
+```powershell
+git pull origin main
+python evaluate_sd_candidates.py --provider llm `
+  --checkpoint model/model-gpu-v0.3.pt `
+  --tokenizer model/tokenizer.json `
+  --output results/sd_candidate_llm_diagnostic.json
+```
+
+No improvement to LLM candidate-generation quality is claimed by this
+diagnostic patch. A separate SD-specific supervised training/evaluation phase
+will likely be necessary for the v0.3 language model.
