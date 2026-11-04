@@ -136,3 +136,63 @@ corpus -> tokenizer -> model forward -> loss -> backward
 
 LLM_GPU preserves that path while moving tensor computation and gradient
 calculation to a physical CUDA GPU.
+
+
+## Four-mode SD comparison (experimental)
+
+`compare_four_modes.py` compares four **distinct runtime strategies**:
+
+| Mode | Runtime |
+| --- | --- |
+| A | Raw Transformer from `model.py` (greedy decoding; no memory) |
+| B | Natural-language memory with lexical retrieval, no composition |
+| C | Linked Semantic Data (SD) graph lookup, no composition |
+| D | Linked SD graph lookup + grammar-template SD composition |
+
+Every SD node (including the grammar template `JA-SOV`) is managed as an SD.
+Propositions link to pre-existing concept/predicate/template SD nodes instead
+of copying them. Composition is allowed **only** for an explicit request to
+create a sentence; it does not assert a novel proposition as true.
+
+The included Japanese fixture has three stored facts, three unmemorized
+composition requests, and two unknown-fact requests. It is a **development
+sanity check**, not a statistically meaningful independent holdout. All modes
+use the same prompts and scoring, but they have different evidence access by
+design. The raw LLM may not be trained on instruction-answer tasks.
+
+### Run
+
+From the repository root:
+
+```powershell
+python -m unittest -v test_compare_four_modes.py
+python compare_four_modes.py --structural-only
+```
+
+The second command runs **B/C/D only** and saves
+`results/four_way_sd_comparison.json`. It does **not** produce an A-versus-D
+performance claim.
+
+To run all four modes, first provide a **compatible trained checkpoint and
+tokenizer** for the current `model.py` and `tokenizer.py`:
+
+```powershell
+python compare_four_modes.py `
+  --checkpoint model/model-gpu-v0.3.pt `
+  --tokenizer model/tokenizer.json `
+  --device auto
+```
+
+The runner refuses to report four-mode results without these files.
+The report includes per-case predictions, latency, overall exact-match
+accuracy, known-answer accuracy, coverage, selective accuracy, and unknown
+rejection. An unknown is correct only when the system abstains.
+
+**Limitations:** The fixture contains template-shaped composition prompts,
+lexical retrieval uses a deliberately simple matching baseline, and the
+structural modes do not invoke the LLM. Consequently, any observed benefit
+demonstrates the value of explicit symbolic composition on this fixture—not
+an improvement in LLM understanding or independent generalization.
+Future work: independently authored multi-turn and paraphrase holdouts,
+balanced baseline prompting, semantic-identity collisions, negation,
+nested grammar templates, and provenance-aware SKI exchange.
