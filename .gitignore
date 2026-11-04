@@ -11,3 +11,7 @@ data/*.xml
 # Model checkpoints
 model/*.pt
 model/*.pth
+
+# Compact SD experiment: checkpoints, generated datasets, reports
+model/sd-compact/
+results/
