@@ -113,7 +113,6 @@ def concordance(proxy, baseline, candidate):
             ("baseline_match", "candidate_mismatch")],
         "baseline_mismatch_to_candidate_match": changed[
             ("baseline_mismatch", "candidate_match")],
-        "proxy_preferred_original_count": None,
         "warning": "Proxy labels were assigned by an AI model and are not "
                    "human gold. This selected Dev review pack is stratified "
                    "by 10k/30k model behavior and not representative. "
