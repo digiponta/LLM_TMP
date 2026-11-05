@@ -8,7 +8,6 @@ a successful parse is NOT approval of a factual claim.
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 import re
 from pathlib import Path
@@ -82,7 +81,7 @@ def accept_candidate(graph, text, raw):
         candidate = load_candidate(raw)
         if set(candidate) != {"tree"} or not isinstance(text, str) or not text.strip():
             raise CandidateRejected("INVALID_ENVELOPE")
-        draft = copy.deepcopy(graph)
+        draft = graph.clone()
         root = _validate_tree(draft, candidate["tree"], 0, [0])
         if draft.render(root) != text.strip():
             raise CandidateRejected("SURFACE_MISMATCH")
