@@ -58,9 +58,9 @@ def format_source_text(case, source_text):
     source = source_text.get(cid)
     if source is None:
         return "元の会話本文がありません。--source-text のファイルと case_id を確認してください。"
-    return ("【会話 Context A】\\n" + source["context_a"]
-            + "\\n\\n【会話 Context B】\\n" + source["context_b"]
-            + "\\n\\n【参照応答】\\n" + source["reference_response"])
+    return ("【会話 Context A】\n" + source["context_a"]
+            + "\n\n【会話 Context B】\n" + source["context_b"]
+            + "\n\n【参照応答】\n" + source["reference_response"])
 
 
 def set_review(case, primary, secondary, rationale):
