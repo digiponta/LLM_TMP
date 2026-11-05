@@ -88,7 +88,7 @@ def evaluate(args):
         "status": "PAIRED_DEVELOPMENT_ONLY_FAMILY_DISJOINT",
         "model_epoch": ckpt.get("epoch"),
         "decision_method": "MEAN_LABEL_LOG_LIKELIHOOD_8_CLASSES",
-        "evaluation_note": "The model was trained without these labels; "
+        "evaluation_note": "Development labels are hidden at inference; "
                            "source test grammar and lexicon still overlap.",
         "overall": summarize(rows),
         "by_intent": {key: summarize([x for x in rows if x["intent"] == key])
