@@ -472,3 +472,18 @@ Next, combine this canonicalizer with an LLM proposer and evaluate frozen,
 human-authored paraphrases with independent semantic labels. The earlier
 94.4% compact-SD score remains a separate **development** baseline; it
 cannot be extrapolated to active/passive normalization.
+
+
+## Layered semantic features (experimental)
+
+`semantic_features_sd.py` introduces two independent identities: a shared core proposition and a full semantic frame. Supported direct active/passive pairs share the core. Polarity (positive/negative), tense (nonpast/past), and subject-topic marking are stored as separate SD feature nodes and therefore distinguish frames even when they share a core. This is a finite-rule prototype rather than LLM-based recognition, general Japanese semantics, or factual verification.
+
+Run:
+
+```powershell
+ git pull origin main
+ python -m unittest -v test_semantic_features_sd.py
+ python semantic_features_sd.py --left "猫が魚を食べる。" --right "猫が魚を食べない。"
+```
+
+Expected: `same_core: true`, `same_frame: false`, `differences: ["polarity"]`. The new regression module defines 18 test methods; their results must be checked locally. The SD graph clone now reconstructs its ID counter rather than deep-copying `itertools.count`, avoiding the Python 3.14 deprecation path in the candidate validator and equivalence normalizer. The pre-existing compact SD generator and its 94.4% development baseline are unchanged. Independent holdout, ambiguity, question scope, and actual LLM feature extraction remain future work.
