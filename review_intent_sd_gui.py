@@ -28,6 +28,41 @@ def load_packet(path):
         raise ValueError("DUPLICATE_OR_MISSING_CASE_ID")
     return data
 
+def load_source_text(path):
+    """Load context by case_id, without importing AI labels into human review."""
+    if path is None:
+        return {}
+    source = Path(path)
+    if not source.is_file():
+        return {}
+    data = json.loads(source.read_text(encoding="utf-8-sig"))
+    cases = data.get("cases")
+    if not isinstance(cases, list):
+        raise ValueError("SOURCE_TEXT_MISSING_CASES")
+    lookup = {}
+    for case in cases:
+        cid = case.get("case_id")
+        if not isinstance(cid, str) or not cid or cid in lookup:
+            raise ValueError("SOURCE_TEXT_DUPLICATE_OR_MISSING_ID")
+        if not all(isinstance(case.get(k), str) for k in
+                   ("context_a", "context_b", "reference_response")):
+            raise ValueError("SOURCE_TEXT_INCOMPLETE_CASE:" + cid)
+        lookup[cid] = {k: case[k] for k in
+                       ("context_a", "context_b", "reference_response")}
+    return lookup
+
+
+def format_source_text(case, source_text):
+    """Display the two original contexts and fixed reference response."""
+    cid = case["case_id"]
+    source = source_text.get(cid)
+    if source is None:
+        return "元の会話本文がありません。--source-text のファイルと case_id を確認してください。"
+    return ("【会話 Context A】\\n" + source["context_a"]
+            + "\\n\\n【会話 Context B】\\n" + source["context_b"]
+            + "\\n\\n【参照応答】\\n" + source["reference_response"])
+
+
 def set_review(case, primary, secondary, rationale):
     if primary not in CAUSES:
         raise ValueError("主原因を選んでください")
@@ -53,18 +88,19 @@ def atomic_save(path, data):
             os.unlink(tmp)
 
 class ReviewWindow(tk.Tk):
-    def __init__(self, source, output):
+    def __init__(self, source, output, source_text=None):
         super().__init__()
         self.packet = load_packet(source)
+        self.source_text = source_text or {}
         self.output = Path(output)
         self.position = 0
         self.title("LLM_TMP — Intent SD 人手レビュー")
-        self.geometry("940x730")
+        self.geometry("1040x830")
         self.primary = tk.StringVar()
         self.secondary = {k: tk.BooleanVar(value=False) for k in CAUSES}
         self.head = ttk.Label(self, font=("", 13, "bold"))
         self.head.pack(anchor="w", padx=16, pady=12)
-        self.details = tk.Text(self, height=12, wrap="word", state="disabled")
+        self.details = tk.Text(self, height=20, wrap="word", state="disabled")
         self.details.pack(fill="both", expand=True, padx=16, pady=6)
         ttk.Label(self, text="主原因：1つ選択").pack(anchor="w", padx=16)
         main = ttk.Frame(self)
@@ -101,11 +137,7 @@ class ReviewWindow(tk.Tk):
                  f"10k一致: {case.get('baseline_matches_proxy')} / 30k一致: {case.get('candidate_matches_proxy')}"]
         if case.get("ai_proxy_analysis"):
             lines.append("AI代理分析: " + json.dumps(case["ai_proxy_analysis"], ensure_ascii=False, indent=2))
-        for key in ("context_a", "context_b", "reference_response"):
-            if key in case:
-                lines.append(f"{key}: {case[key]}")
-        if not any(k in case for k in ("context_a", "context_b", "reference_response")):
-            lines.append("元の会話本文は含まれていません。原因を断定せず必要なら保留してください。")
+        lines.append(format_source_text(case, self.source_text))
         self.details.config(state="normal")
         self.details.delete("1.0", "end")
         self.details.insert("1.0", "\n\n".join(lines))
@@ -146,11 +178,14 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--input", default="results/intent_sd_mismatch_review_dev.json")
     p.add_argument("--output", default="results/intent_sd_mismatch_human_review_dev.json")
+    p.add_argument("--source-text", default="results/realpersonachat_semantic_review_ai_proxy.json",
+                   help="Local private AI-proxy source pack containing context_a/context_b/reference_response")
     a = p.parse_args()
     source = a.output if Path(a.output).exists() else a.input
     if not load_packet(source)["mismatch_cases"]:
         raise ValueError("NO_REVIEW_CASES")
-    ReviewWindow(source, a.output).mainloop()
+    text_lookup = load_source_text(a.source_text)
+    ReviewWindow(source, a.output, text_lookup).mainloop()
 
 if __name__ == "__main__":
     main()
