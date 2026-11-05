@@ -10,6 +10,7 @@ Never touches Test JSONL, nor trains or alters checkpoint weights.
 from __future__ import annotations
 
 import argparse
+import collections
 import difflib
 import json
 import statistics
@@ -76,6 +77,16 @@ def calculate_report(rows):
         "copy_previous_mean_character_overlap": (
             statistics.mean(r["copy_previous_overlap"] for r in completed)
             if completed else None),
+        "unique_generated_count": len({r["generated"] for r in completed}),
+        "distinct_response_ratio": (
+            len({r["generated"] for r in completed}) / len(completed)
+            if completed else None),
+        "most_common_generated_count": (
+            collections.Counter(r["generated"] for r in completed)
+            .most_common(1)[0][1] if completed else 0),
+        "most_common_generated_fraction": (
+            collections.Counter(r["generated"] for r in completed)
+            .most_common(1)[0][1] / len(completed) if completed else None),
         "mean_generated_characters": (
             statistics.mean(len(r["generated"]) for r in completed)
             if completed else None),
