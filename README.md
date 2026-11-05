@@ -1108,3 +1108,56 @@ Next prioritize **human-judged topical consistency** for true-vs-
 shuffled dialogues (with private text retained locally), controlled
 speaker/length and tokenizer normalization, and independent holdout
 after the evaluation protocol is fixed.
+
+
+## Human-reviewed Semantic Context Evaluation: blinded Dev review
+
+Prior user-run paired Full-Length Shuffle evaluation on 188 common Dev
+cases: original-context win fraction 10k 0.6383 vs 30k 0.7074,
+mean within-model log-likelihood delta +0.02948 vs +0.04682.
+39 cases switched unfavorable-to-favorable, while 26 switched
+favorable-to-unfavorable. These are model likelihood preferences,
+not human-rated contextual suitability.
+
+`review_realpersonachat_semantics.py` creates a *local/private* blinded
+review pack from the TWO original scored Dev shuffle JSON reports.
+It selects up to 15 examples from each of three diagnostic strata:
+RECOVERED, REGRESSED and STABLE_OR_MIXED. Strata are sampled
+deterministically by hashed case ID; they are **not a random
+representative Dev sample**. Reviewers see only context A, context B,
+the same reference answer, and empty review fields. The source's
+original/shuffled order is pseudorandomized per case. No model outputs,
+likelihood scores or gold-side labels appear in the packet.
+The report's original case IDs are pseudonymized, although its
+conversation text is **not anonymized**.
+
+```powershell
+git pull origin main
+python -m unittest -v test_review_realpersonachat_semantics.py
+python review_realpersonachat_semantics.py prepare --baseline results/realpersonachat_fullshuffle_10k_dev.json --candidate results/realpersonachat_fullshuffle_30k_dev.json --per-bucket 15 --review-pack results/realpersonachat_semantic_review_dev.json
+```
+
+Open `results/realpersonachat_semantic_review_dev.json` locally and
+fill each case's `review` object by hand:
+
+- `label`: `"A"` if A alone is better suited to the target response,
+  `"B"` if B alone, `"BOTH"` if both, `"NEITHER"` if neither,
+  or `"UNCLEAR"` if the context does not suffice.
+- `rationale`: short, non-empty explanation of why the answer fits.
+- `reviewer_id`: a non-empty pseudonymous identifier.
+- Leave `label: null` for any item not yet reviewed; do not
+  invent judgments from the model's metrics.
+
+```powershell
+python review_realpersonachat_semantics.py audit --review-pack results/realpersonachat_semantic_review_dev.json --audit-output results/realpersonachat_semantic_review_audit.json
+```
+
+The audit produces HUMAN_REVIEW_PENDING, INVALID or
+HUMAN_REVIEW_COMPLETE and counts labels. It does **not**
+automatically claim human-review completion or semantic accuracy.
+Because selected cases are stratified by model behavior, the completed
+set is qualitative failure analysis, not an unbiased population
+accuracy estimate. Keep all text-bearing files out of Git and
+external publication; `results/` is ignored by Git.
+Test remains sealed. A separate unbiased, independently curated
+evaluation should follow the review-protocol freeze.
