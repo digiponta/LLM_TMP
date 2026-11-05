@@ -15,3 +15,5 @@ model/*.pth
 # Compact SD experiment: checkpoints, generated datasets, reports
 model/sd-compact/
 results/
+
+model/sd-frame/
