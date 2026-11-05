@@ -546,3 +546,47 @@ independent natural-language generalization or a blind holdout.
 Report `exact_code_rate`, `sd_accept_rate` and breakdown by active/passive.
 The existing 94.4% compact-SD development result is a historical reference,
 not a controlled apples-to-apples comparison because tasks/splits differ.
+
+
+## Two-head role-first Core/Frame learning (experimental)
+
+The direct frame LLM baseline on 120 core-disjoint **development** examples:
+70.833% overall (85/120), 92.5% active (74/80), 27.5% passive (11/40).
+Most rejected candidates swap the agent/patient on Japanese passives.
+
+The two-head experiment trains **two independent small Transformers** on
+exactly the same training and development examples and split as
+`train_frame_sd.py` (same seed 42, 480 train / 120 dev):
+- **roles head:** `R(DOG,FISH,WATCH)` identifies semantic agent,
+  patient, and action irrespective of surface voice.
+- **features head:** `Q(NEG,PAST,UNMARKED)` identifies polarity,
+  nonpast/past and subject-topic attributes.
+- **assembler:** validates both outputs and constructs
+  `F(S(DOG,FISH,WATCH),NEG,PAST,UNMARKED)`.
+- **SD Engine:** validates the *predicted candidate* against the original
+  surface and rejects mismatches without mutating Semantic Memory.
+
+Neither head receives ground-truth labels, voice flags, or rule-parser
+outputs at evaluation time; both receive **only the input sentence**. No
+symbolic fallback corrects prediction failures. Evaluation reports separate
+role, feature, full-code and accepted-frame accuracy, plus active/passive
+breakdowns.
+
+```powershell
+git pull origin main
+python -m unittest -v test_role_frame_sd.py test_compare_role_frame_models.py
+python train_role_frame_sd.py train --device auto --epochs 20
+python train_role_frame_sd.py evaluate --device auto
+python compare_role_frame_models.py --baseline results/sd_frame_eval.json --two-head results/sd_role_frame_eval.json
+```
+
+Artifacts live separately under `model/sd-role-frame/`:
+`model-roles.pt`, `model-features.pt`, tokenizers for each, `split.json`,
+and `history.json`. Reports go to `results/sd_role_frame_eval.json`
+and `results/role_frame_comparison.json`. The comparison script refuses
+differing rows, targets or voice labels and reports newly-correct and
+regressed cases on the **paired** 120-item development set.
+
+These synthetic samples share lexicon, inflections and grammar. The split
+is core-triple-disjoint, not independent natural-language generalization.
+No score is claimed until the user trains and evaluates the new heads.
