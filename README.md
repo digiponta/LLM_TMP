@@ -873,3 +873,56 @@ samples and alternative decoding against the same frozen Dev cases,
 without using the Test split for model selection. Do not interpret
 generic acknowledgements as high-quality dialogue or automate persona
 memory ingestion from this pilot.
+
+
+## Scale experiment: 2k vs 10k supervised conversation examples
+
+**Hypothesis:** Increasing training examples from 2,000 to 10,000 while
+keeping model architecture, seed, generation algorithm and the 200-item
+Dev subset fixed may reduce generic-response collapse. This is a
+development experiment, not a conclusion or guarantee. Previous 2k run:
+Dev Token NLL 3.32128 (epoch 3); 18/20 Dev responses generated, 17/18
+were "そうですね。", with a 1,821-symbol Train-only character vocabulary.
+The previous 14-test suite surfaced a *test fixture* failure (expected a
+character absent from its training sample) and file-close warnings;
+both were corrected in commit 9dffa4c and preceding updates.
+
+**Preflight for scaled run** (Train only for tokenizer fit):
+
+```powershell
+git pull origin main
+python -m unittest -v test_train_realpersonachat_pilot.py test_evaluate_realpersonachat_pilot.py test_compare_realpersonachat_pilots.py
+python audit_realpersonachat_pilot.py --train-limit 10000 --dev-limit 200 --context 256
+```
+
+**New checkpoint directory** to avoid overwriting the existing 2k
+checkpoint and training record:
+
+```powershell
+python train_realpersonachat_pilot.py train --device auto --epochs 3 --train-limit 10000 --dev-limit 200 --outdir model/realpersonachat-pilot-10k
+```
+
+**Matched Dev-generation audit** (same first 20 Dev examples, max 50
+tokens, greedy decoding; these reports contain text and must remain
+private/local):
+
+```powershell
+python evaluate_realpersonachat_pilot.py --device auto --count 20 --outdir model/realpersonachat-pilot-10k --output results/realpersonachat_pilot_10k_dev.json
+python compare_realpersonachat_pilots.py --baseline results/realpersonachat_pilot_dev.json --candidate results/realpersonachat_pilot_10k_dev.json
+```
+
+New `compare_realpersonachat_pilots.py` requires identical
+`dialogue_id`/`turn_id`, identical prompt and reference for each
+case, and rejects duplicates. It reports per-case cohort coverage,
+exact-match, mean character-overlap delta on jointly-generated cases,
+distinct response ratio and most-common response fraction. Unlike a
+naive comparison of generated-only averages, it uses exactly the same
+Dev cases and exposes changes in abstention. Scores do not measure
+meaning, appropriateness or safety. `test_compare_realpersonachat_pilots.py`
+tests this strict pairing. **Test JSONL remains unused**. Do not merge
+any generated conversation text into permanent Semantic Memory without
+source verification and human review.
+
+After this comparison, decide whether to add more data, length-controlled
+decoding and vocab fallback, or invest in a dialogue-act planner. Avoid
+claiming that 10k sampling necessarily improves dialogue coherence.
