@@ -1074,3 +1074,37 @@ Next: use a separate manually reviewed set of compatible/incompatible
 dialogue-context pairs, compare the same **fixed cohort** across
 checkpoints, and only use the independent Test after the final
 evaluation protocol is locked.
+
+
+## Strict paired common-cohort comparison after Full-Length Shuffle (2026-11-05)
+
+User-observed run: 16 related tests passed. Among 200 Dev cases, 10k
+scored 188, with 63.83% positive original-minus-shuffle and
+mean delta +0.02948; 30k scored 196, 71.43% positive and mean
+delta +0.04911. These model-level results use DIFFERENT scored
+cohorts, so cannot by themselves quantify a matched-case improvement.
+
+`compare_realpersonachat_fullshuffle.py` reads ONLY the two existing
+private local evaluation reports. It verifies that their 200 case keys,
+donor dialogue identities, original and shuffled prompts, reference
+responses and turn counts are identical; then excludes all cases in
+which either model abstained. It produces a JSON summary with NO source
+utterance text, including joint cohort size, both sign fractions and
+mean deltas, direction-change counts and an exploratory seeded
+bootstrap interval on the within-case difference of score deltas.
+Because the models have different Train-only token vocabularies,
+the score differences are still not perfectly comparable; the
+bootstrap confidence interval also assumes exchangeable cases and
+is descriptive, not a confirmatory population inference.
+
+```powershell
+git pull origin main
+python -m unittest -v test_compare_realpersonachat_fullshuffle.py
+python compare_realpersonachat_fullshuffle.py --baseline results/realpersonachat_fullshuffle_10k_dev.json --candidate results/realpersonachat_fullshuffle_30k_dev.json --output results/realpersonachat_fullshuffle_paired.json
+```
+
+Do not reuse these Dev results as independent model validation.
+Next prioritize **human-judged topical consistency** for true-vs-
+shuffled dialogues (with private text retained locally), controlled
+speaker/length and tokenizer normalization, and independent holdout
+after the evaluation protocol is fixed.
