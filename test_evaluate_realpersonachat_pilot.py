@@ -41,6 +41,16 @@ class ResponseEvaluationTests(unittest.TestCase):
         self.assertEqual(result["abstention_reasons"],
                          {"UNKNOWN_PROMPT_CHARACTERS": 1})
 
+    def test_detect_response_collapse(self):
+        rows = [{"status": "GENERATED", "generated": "そうですね。",
+                 "reference": "わかりました。",
+                 "generated_overlap": 0.2,
+                 "copy_previous_overlap": 0.1} for _ in range(3)]
+        result = calculate_report(rows)
+        self.assertEqual(result["unique_generated_count"], 1)
+        self.assertAlmostEqual(result["distinct_response_ratio"], 1 / 3)
+        self.assertEqual(result["most_common_generated_fraction"], 1.0)
+
     def test_zero_selected_rejected(self):
         with self.assertRaisesRegex(ValueError, "NO_SELECTED_ROWS"):
             calculate_report([])
