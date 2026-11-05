@@ -8,7 +8,7 @@ a human label automatically and it never treats AI proxy as human gold.
 
 ```powershell
 python -m unittest -v test_review_intent_sd_gui.py
-python analyze_proxy_disagreements.py prepare
+python analyze_proxy_disagreements.py prepare  # 初回のみ。既存ファイルがあれば省略
 python review_intent_sd_gui.py
 ```
 
@@ -33,3 +33,33 @@ private under `results/` (gitignored). To validate reviewed categories:
 ```powershell
 python analyze_proxy_disagreements.py audit --packet results/intent_sd_mismatch_human_review_dev.json
 ```
+
+## Display original dialogue text (updated)
+
+The GUI now looks up each reviewed `case_id` in the **local**
+`results/realpersonachat_semantic_review_ai_proxy.json` file.
+It displays **Context A**, **Context B**, and the fixed **reference
+response** in the scrolling text area, in addition to the existing
+agreement indicators. The text is loaded for display only; it is never
+copied into the human annotation output.
+
+Default command:
+
+```powershell
+python review_intent_sd_gui.py
+```
+
+If your source review pack has another path, specify it:
+
+```powershell
+python review_intent_sd_gui.py --source-text results/realpersonachat_semantic_review_dev.json
+```
+
+The source JSON must contain `cases` with matching `case_id`,
+`context_a`, `context_b`, `reference_response`.
+If this file is missing or a case cannot be matched, the GUI
+shows a clear warning instead of making up conversation text.
+Keep the source review file local; do not commit it.
+
+You do **not** need to regenerate the mismatch review packet, so
+existing classifications and pending reviews remain available.
