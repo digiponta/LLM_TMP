@@ -926,3 +926,55 @@ source verification and human review.
 After this comparison, decide whether to add more data, length-controlled
 decoding and vocab fallback, or invest in a dialogue-act planner. Avoid
 claiming that 10k sampling necessarily improves dialogue coherence.
+
+
+## Next controlled experiment: 30k training and context counterfactuals
+
+User-observed 10k run (3 epochs, 200 fixed Dev): 21 tests passed,
+Dev NLL 2.91524, Dev PPL 18.4533, 20/20 generated, 14 unique
+outputs, most-common response 25%, mean generated length 11.5.
+Compared with 2k on the same 20 Dev examples, coverage rose from
+90% to 100%, and response variety improved. **NLL/PPL are not perfectly
+comparable across 2k and 10k checkpoints**, as their Train-only character
+vocabularies differ (1,821 vs 2,420). Increased text diversity does not
+by itself demonstrate context comprehension.
+
+Use a fresh 30k checkpoint directory with the **same model architecture,
+seed, 200 Dev examples, 2 preceding turns, 256 context, three epochs and
+greedy generation**. Keep the 10k checkpoint unchanged.
+
+```powershell
+cd C:\Users\inoma\git\misc\LLM_TMP
+git pull origin main
+python -m unittest -v test_evaluate_realpersonachat_context.py test_compare_realpersonachat_pilots.py
+python audit_realpersonachat_pilot.py --train-limit 30000 --dev-limit 200 --context 256
+python train_realpersonachat_pilot.py train --device auto --epochs 3 --train-limit 30000 --dev-limit 200 --outdir model/realpersonachat-pilot-30k
+python evaluate_realpersonachat_pilot.py --device auto --count 20 --outdir model/realpersonachat-pilot-30k --output results/realpersonachat_pilot_30k_dev.json
+python compare_realpersonachat_pilots.py --baseline results/realpersonachat_pilot_10k_dev.json --candidate results/realpersonachat_pilot_30k_dev.json --output results/realpersonachat_10k_30k_comparison.json
+```
+
+**Counterfactual sensitivity, not semantic grading.** The new
+`evaluate_realpersonachat_context.py` computes mean teacher-forced
+log probability of each frozen Dev reference response under the original
+prompt and an artificial prompt. The only intervention is replacing
+the *last context turn's text* with a turn from a different Dev dialogue;
+speaker identifiers, earlier turn(s), next speaker and response target
+are preserved. It reports the fraction of scored cases where original
+log probability is greater than counterfactual log probability, mean
+log-probability delta and skip count (unknown characters, context
+overflow, etc.). Because donor context might still be compatible, these
+statistics are not accuracy or factual verification. This Dev
+counterfactual is for *development only*, and must not substitute for a
+separately authored, human-judged independent evaluation.
+
+```powershell
+python evaluate_realpersonachat_context.py --device auto --count 20 --outdir model/realpersonachat-pilot-10k --output results/realpersonachat_context_10k_dev.json
+python evaluate_realpersonachat_context.py --device auto --count 20 --outdir model/realpersonachat-pilot-30k --output results/realpersonachat_context_30k_dev.json
+```
+
+The context reports include original/donor prompts and reference
+responses; keep them **local and private**. Only Train and Dev split
+files are read. Test remains sealed for a future final evaluation.
+The diagnostic outputs are not compared across checkpoints as
+log-probabilities directly; each model's original-vs-alternative
+difference is measured on its own tokenizer/vocabulary.
