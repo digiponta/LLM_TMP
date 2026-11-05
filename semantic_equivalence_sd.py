@@ -13,7 +13,6 @@ intentionally refuses unsupported or ambiguous forms.
 """
 from __future__ import annotations
 
-import copy
 import re
 
 from compact_sd import parse_compact, to_compact
@@ -99,7 +98,7 @@ class SemanticNormalizer:
 
     def _canonical_text(self, candidate):
         # Work against a temporary graph so that analysis has one atomic commit.
-        draft = copy.deepcopy(self.graph)
+        draft = self.graph.clone()
 
         def walk(node):
             if "sd_ref" in node:
