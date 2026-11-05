@@ -1030,3 +1030,47 @@ only when replacement is intended. Next: inspect cases where Full
 Context loses to No Context, then design targeted semantic,
 human-judged conversation-pair checks. Keep final independent Test
 sealed until the protocol is frozen.
+
+
+## Full-Length Context Shuffle: 10k vs 30k frozen Dev diagnostic
+
+User-observed Context Ablation using 200 Dev cases: 10k had
+194/200 all-three-condition scores, with Full-minus-Last +0.06413
+and Full-minus-No-Context +0.97885. The 30k checkpoint had
+198/200, Full-minus-Last +0.30168 and Full-minus-No-Context
++1.86572. These are *within-model* score differences and do not
+prove semantic understanding. No-Context is out of the training
+prompt distribution.
+
+`evaluate_realpersonachat_fullshuffle.py` now evaluates a
+*same-length-structure* alternative: both context turns are replaced
+with text from a different Dev dialogue, while keeping the same
+number of turns, speaker sequence and reference response. A
+deterministic donor selector favors similar text lengths, rejects the
+same conversation and rejects no-op identical text. This comparison
+does not remove context, reducing (but not eliminating) prompt-format
+confounding. It reuses saved checkpoints and Train-only tokenizers,
+does not update model weights and does not access Test.
+
+```powershell
+git pull origin main
+python -m unittest -v test_evaluate_realpersonachat_fullshuffle.py test_evaluate_realpersonachat_ablation.py
+python evaluate_realpersonachat_fullshuffle.py --device auto --count 200 --outdir model/realpersonachat-pilot-10k --output results/realpersonachat_fullshuffle_10k_dev.json
+python evaluate_realpersonachat_fullshuffle.py --device auto --count 200 --outdir model/realpersonachat-pilot-30k --output results/realpersonachat_fullshuffle_30k_dev.json
+```
+
+Key metrics: `paired_scored`, `positive_delta_fraction_on_scored`,
+`mean_delta_log_probability`, `median_delta_log_probability`,
+`mean_donor_length_difference`, and `abstention_reasons`.
+Positive delta means the original prompt assigned a higher
+teacher-forced mean token log-probability to the original reference.
+It is not a semantic correctness or generation-quality score.
+Artificially swapped text may remain sensible; donor lengths and
+wording can still affect likelihood. Reports contain real conversation
+text and must remain private. Output is not overwritten unless
+`--overwrite` is explicitly used.
+
+Next: use a separate manually reviewed set of compatible/incompatible
+dialogue-context pairs, compare the same **fixed cohort** across
+checkpoints, and only use the independent Test after the final
+evaluation protocol is locked.
