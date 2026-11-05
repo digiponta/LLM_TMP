@@ -44,7 +44,7 @@ class ReviewGuiTests(unittest.TestCase):
             self.assertIn("別の会話B", text)
             self.assertIn("参照応答", text)
             self.assertNotIn("ai_proxy_review", text)
-            self.assertIn("\\n", text)
+            self.assertIn("\n", text)
 
     def test_missing_source_is_explicit(self):
         self.assertIn("ありません",
