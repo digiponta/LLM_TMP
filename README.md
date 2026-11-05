@@ -833,3 +833,43 @@ loss monitoring, NOT a blinded evaluation. No Test data is touched.
 The two new scripts are `audit_realpersonachat_pilot.py` and
 `evaluate_realpersonachat_pilot.py`; their supporting regression tests
 are in `test_evaluate_realpersonachat_pilot.py`.
+
+
+## Follow-up after first RealPersonaChat GPU pilot (2026-11-05)
+
+Observed operator results: 2,000 Train / 200 Dev selected, context 256,
+3 epochs. Train NLL 4.29513 -> 3.18845; Dev NLL 3.56798 -> 3.32128,
+PPL 35.445 -> 27.6959. All examples fit context. Train-only
+vocabulary contained 1,821 characters; Dev had 28/200 prompts with
+unknown characters and 8/200 targets containing 11 unknown characters.
+
+Dev generation audit on 20 cases: 18 generated, 2 abstained
+(UNKNOWN_PROMPT_CHARACTERS), 0 exact matches; 17/18 generated texts
+were the generic phrase "そうですね。" and the remaining one was
+"そうですね！いですね！". Mean character overlap was ~0.2568
+versus ~0.2375 for a copy-last-turn baseline. These results show
+**severe response collapse** and do not establish contextual reasoning.
+
+Updates in this revision:
+- Fix the regression test: it incorrectly expected `お` in a tokenizer
+  fitted on example text containing `こ` but no `お`.
+- Use a context manager to close local JSONL files even when invalid
+  examples raise exceptions (removes ResourceWarning).
+- Add `unique_generated_count`, `distinct_response_ratio`,
+  `most_common_generated_count` and
+  `most_common_generated_fraction` to the Dev generation report.
+- Test response-collapse metrics without requiring GPU.
+
+```powershell
+git pull origin main
+python -m unittest -v test_train_realpersonachat_pilot.py test_evaluate_realpersonachat_pilot.py
+python evaluate_realpersonachat_pilot.py --device auto --count 20 --overwrite
+```
+
+The updated evaluation does **not** require retraining and uses the same
+checkpoint and Dev sample. It overwrites the existing local report only
+when explicitly requested. Next compare larger supervised training
+samples and alternative decoding against the same frozen Dev cases,
+without using the Test split for model selection. Do not interpret
+generic acknowledgements as high-quality dialogue or automate persona
+memory ingestion from this pilot.
