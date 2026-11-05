@@ -43,6 +43,8 @@ def choose_matched_donor(rows, source, context_turns):
             continue
         if [x["speaker"] for x in donor] != [x["speaker"] for x in src]:
             continue
+        if all(a["text"] == b["text"] for a, b in zip(src, donor)):
+            continue
         difference = sum(abs(len(a["text"]) - len(b["text"]))
                          for a, b in zip(src, donor))
         candidates.append((difference, rank, item))
