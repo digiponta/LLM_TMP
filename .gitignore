@@ -21,3 +21,6 @@ model/sd-frame/
 model/sd-role-frame/
 
 model/dialogue-intent/
+
+# Local conversation datasets (may contain third-party or private text)
+data/realpersonachat_*/
