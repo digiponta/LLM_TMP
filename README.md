@@ -639,3 +639,44 @@ historical scores are unaffected.
 Next: independently authored intent paraphrases, multi-intent utterances,
 unknown/abstain cases, actual dialogue context, response-action selection,
 and grounding of conversational content with provenance and speaker roles.
+
+
+## Constrained Dialogue Intent decoding (no retraining)
+
+The previous 35-epoch Intent LLM scored 17/32 exact on the development
+split (53.125%), with 26/32 structurally accepted and 9/32 **valid but
+incorrect intent labels**. These are user-observed results, not claims
+about general conversational understanding.
+
+`constrained_dialogue_intent.py` evaluates exactly the eight registered
+`I(INTENT)` codes under the **same saved Transformer**. Rather than
+generating arbitrary characters greedily, it teacher-forces each complete
+candidate code (including newline and EOS), scores the **mean token log
+likelihood**, and chooses the highest-scoring valid candidate. No gold
+label or heuristic parser is used to repair its answer. Unknown input
+characters and overlong prompts lead to abstention; otherwise a
+known label is selected even for unsupported dialogue. The score gap is
+*uncalibrated* and must not be interpreted as confidence.
+
+`evaluate_constrained_dialogue_intent.py` reads the earlier fixed
+`results/dialogue_intent_dev.json` for a strict per-case comparison and
+uses the existing checkpoint/tokenizer/split from
+`model/dialogue-intent/`. It rejects mismatched test items or labels.
+The resulting report records gains, regressions, per-Intent results,
+wrong-label confusions and valid-but-wrong candidate counts. It does
+**not** overwrite or silently modify the original baseline report.
+
+```powershell
+git pull origin main
+python -m unittest -v test_constrained_dialogue_intent.py
+python evaluate_constrained_dialogue_intent.py --device auto
+```
+
+Output: `results/dialogue_intent_constrained.json`.
+
+This is only a paired **development** diagnostic with a single fixed
+checkpoint; it is not an independent holdout. Since the set of possible
+outputs is constrained to known labels, improvements to syntax acceptance
+are not proof of semantic classification. Training changes, hierarchical
+intent recognition, calibrated abstention and multi-turn context remain
+future work.
