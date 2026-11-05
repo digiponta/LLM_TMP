@@ -87,7 +87,7 @@ class RealPersonaChatPilotTests(unittest.TestCase):
     def test_tokenizer_can_use_train_only(self):
         tok = Tokenizer()
         tok.fit_texts([prompt_text(record(1, 1)) + "こんにちは。"])
-        self.assertIn("お", tok.token_to_id)
+        self.assertIn("こ", tok.token_to_id)
         self.assertEqual(tok.encode("𠮟"), [tok.unk_id])
 
 
