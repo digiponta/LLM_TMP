@@ -26,3 +26,5 @@ model/dialogue-intent/
 data/realpersonachat_*/
 
 model/realpersonachat-pilot/
+
+model/realpersonachat-pilot-*/
