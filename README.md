@@ -680,3 +680,61 @@ outputs is constrained to known labels, improvements to syntax acceptance
 are not proof of semantic classification. Training changes, hierarchical
 intent recognition, calibrated abstention and multi-turn context remain
 future work.
+
+
+## Local RealPersonaChat dialogue JSON importer (13,583 files observed locally)
+
+The RealPersonaChat corpus, as checked on Windows, contains file-per-dialogue
+UTF-8 JSON with fields `dialogue_id`, `interlocutors`, `utterances`,
+`evaluations`; utterances include `utterance_id`, `interlocutor_id`,
+`text` and `timestamp`. Use `-Encoding UTF8` with Windows PowerShell 5.1
+when reading Japanese JSON.
+
+`import_realpersonachat.py` reads this source format **without altering
+the originals**. It validates speakers, unique dialogue/utterance IDs and
+nonempty text, sorts utterances by their explicit ID, and constructs
+multi-turn next-utterance examples containing previous speaker/text pairs,
+the next speaker, and the next utterance. Both conversation participants
+are treated symmetrically as `speaker_0`/`speaker_1` based on the source
+`interlocutors` order; **AA/AB are not assumed to be user/assistant**.
+Evaluations are ignored, not copied as quality labels. Intent labels are
+`null`, because the corpus does not provide ground-truth intent classes.
+
+All next-turn samples from a source dialogue share the same deterministic
+content-hash split, 90/5/5 train/dev/test. Identical full-dialogue content
+is deduplicated. This protects against conversation-level leakage but does
+**not** establish an independent evaluation: paraphrases or overlapping
+dialogues may still cross splits. Split proportions are approximate due
+to hash assignment and the corpus may contain sensitive or copyrighted
+material; check original dataset usage terms and privacy before training.
+
+**Audit only (default, no text output files):**
+
+```powershell
+cd C:\Users\inoma\git\misc\LLM_TMP
+git pull origin main
+python -m unittest -v test_import_realpersonachat.py
+$source = "C:\Users\inoma\git\misc\LLM_CHA\data-src\real-persona-chat\real_persona_chat\dialogues"
+python import_realpersonachat.py --source $source --limit-files 100
+python import_realpersonachat.py --source $source
+```
+
+After checking usage rights and personal-data handling, export only on
+the local machine, first with a 100-file smoke test into a separate fresh
+directory:
+
+```powershell
+python import_realpersonachat.py --source $source --limit-files 100 --write --output data/realpersonachat_smoke
+python import_realpersonachat.py --source $source --write --output data/realpersonachat_import
+```
+
+Exports: `train.jsonl`, `dev.jsonl`, `test.jsonl`, `audit.json`.
+The importer refuses overwriting an existing export. These paths are
+gitignored. **Do not commit source dialogue content to GitHub.**
+
+This is a **data-preparation step only**, not trained dialogue generation
+or auto-labelled Intent learning. Next steps: license/privacy audit,
+conversation-aware tokenizer, model context budgeting, response-training
+pipeline, independent evaluation, and separate human-reviewed Intent
+annotations. The existing 32-item Intent evaluation must not be promoted
+to an independent final benchmark.
