@@ -121,6 +121,16 @@ class RecursiveSD:
     def snapshot(self):
         return deepcopy(self.nodes)
 
+    def clone(self):
+        """Copy SD graph while recreating the ID counter for Python 3.14."""
+        replica = object.__new__(type(self))
+        replica.nodes = deepcopy(self.nodes)
+        replica.canonical = deepcopy(self.canonical)
+        occupied = [int(key[3:]) for key in replica.nodes
+                    if key.startswith("SD-") and key[3:].isdigit()]
+        replica.ids = count(max(occupied, default=0) + 1)
+        return replica
+
 
 def build_sample_graph():
     graph = RecursiveSD()
