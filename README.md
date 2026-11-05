@@ -738,3 +738,49 @@ conversation-aware tokenizer, model context budgeting, response-training
 pipeline, independent evaluation, and separate human-reviewed Intent
 annotations. The existing 32-item Intent evaluation must not be promoted
 to an independent final benchmark.
+
+
+## Multi-turn RealPersonaChat response-generation pilot
+
+Observed local audit (2026-11-05): 13,583 JSON files; 13,577 unique
+valid conversations, 4 duplicate-content files excluded, and 2
+duplicate-dialogue-ID files excluded. The exported corpus currently has
+353,929 Train, 20,383 Dev, 20,549 Test **next-utterance examples**.
+The 14 importer unit tests passed on Windows. This is observational
+data from the operator's run, not a fresh independent evaluation.
+
+`train_realpersonachat_pilot.py` trains a **separate**, tiny causal
+Transformer on a bounded sample, using the local JSONL exporter output.
+No file is pushed to GitHub, and all model/data artifacts are gitignored.
+It preserves `speaker_0` / `speaker_1` rather than making assumptions
+about assistant/user roles. Input format is preceding turns plus an
+explicit next-speaker ID; target is the next utterance. Its loss is
+supervised *only on generated response tokens*, not on the input prompt.
+
+Tokenizer is fitted using Train examples **only**. Dev unseen characters
+are handled as UNK and counted; this is a limitation. The model has
+character-level tokens and a fixed context length (default 256): examples
+that do not fit are dropped, with counts reported. Data is sampled
+deterministically (SHA256 keyed by dialogue ID + turn ID) from the
+pre-existing corpus-disjoint split, with default caps Train 2,000 /
+Dev 200; **Test stays entirely unused**. Token NLL/PPL on Dev is a
+diagnostic, *not* proof of coherent or helpful conversation.
+
+```powershell
+cd C:\Users\inoma\git\misc\LLM_TMP
+git pull origin main
+python -m unittest -v test_train_realpersonachat_pilot.py
+python train_realpersonachat_pilot.py train --device auto --epochs 3 --train-limit 2000 --dev-limit 200
+python train_realpersonachat_pilot.py generate --device auto --example-index 0
+```
+
+Training artifacts: `model/realpersonachat-pilot/` (checkpoint,
+tokenizer, training.json). The `generate` command uses an existing
+**development** example with its reference response shown for qualitative
+comparison; it does not evaluate an independent blind holdout. No
+persona labels, intent ground truth, or proof of factual correctness is
+created. Review licensing and privacy restrictions before using actual
+conversations for machine-learning training, even when files stay local.
+Further work: privacy filtering, character-vocab optimization, better
+context windows, response planning, reviewed Intent labels and
+independent new-source testing.
