@@ -784,3 +784,52 @@ conversations for machine-learning training, even when files stay local.
 Further work: privacy filtering, character-vocab optimization, better
 context windows, response planning, reviewed Intent labels and
 independent new-source testing.
+
+
+## Response-pilot diagnostics: preflight + generated-response Dev audit
+
+The importer is complete, but the user's own GPU pilot training results
+have **not** yet been observed. New diagnostics allow the pilot to be
+assessed before and after GPU training.
+
+**Step 1: data-fit preflight, no GPU or response-model training**
+
+```powershell
+git pull origin main
+python -m unittest -v test_train_realpersonachat_pilot.py test_evaluate_realpersonachat_pilot.py
+python audit_realpersonachat_pilot.py --input-dir data/realpersonachat_import --train-limit 2000 --dev-limit 200 --context 256
+```
+
+The preflight computes the Train-only character vocabulary size, effective
+Train and Dev sample counts, context-length exclusions, and Dev UNK
+character counts. It reads Train + Dev only, never Test, and prints no
+conversation snippets. If many examples are rejected, increase context
+(e.g. 384) or reduce max chars/context turns **before** training, while
+keeping a separate experiment checkpoint for fair comparison.
+
+**Step 2: pilot training (if not already run)**
+
+```powershell
+python train_realpersonachat_pilot.py train --device auto --epochs 3 --train-limit 2000 --dev-limit 200
+```
+
+**Step 3: small Dev-generation audit using that checkpoint**
+
+```powershell
+python evaluate_realpersonachat_pilot.py --device auto --count 20
+```
+
+Local private report: `results/realpersonachat_pilot_dev.json`, with
+prompt, actual generated response, reference response, and a
+`copy_previous` baseline per case. The report also includes generation
+coverage, exact matching, character overlap and empty-response rate. It
+refuses overwriting an existing report unless `--overwrite` is passed.
+The report contains conversation snippets and should **not** be published
+without review. Similarity and exact-match metrics are only diagnostics:
+alternative responses may be valid, so also inspect individual examples.
+The input selection is the same local corpus Dev subset used for training
+loss monitoring, NOT a blinded evaluation. No Test data is touched.
+
+The two new scripts are `audit_realpersonachat_pilot.py` and
+`evaluate_realpersonachat_pilot.py`; their supporting regression tests
+are in `test_evaluate_realpersonachat_pilot.py`.
