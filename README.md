@@ -590,3 +590,52 @@ regressed cases on the **paired** 120-item development set.
 These synthetic samples share lexicon, inflections and grammar. The split
 is core-triple-disjoint, not independent natural-language generalization.
 No score is claimed until the user trains and evaluates the new heads.
+
+
+## Dialogue Intent SD: first step toward ordinary conversation (experimental)
+
+Adds a third, **independently trained** dialogue-intent model alongside the
+existing Core-role and Semantic-Frame models. It does NOT yet implement a
+dialogue-context engine, a conversation-response generator or open-ended chat.
+
+Intent labels: `GREETING`, `FAREWELL`, `THANKS`, `QUESTION`,
+`REQUEST`, `SELF_DISCLOSURE`, `FEELING`, `ACKNOWLEDGEMENT`.
+Each is a registered SD atom, wrapped by the `T-DIALOGUE-ACT` template
+as `I(INTENT)`. SD graph interning shares an intent-type node across
+utterances. **This is a dialogue-act category, not a unique representation
+of the full utterance; it does not preserve who said what or the original
+content within that node.** Neither a structurally accepted intent SD nor
+its label is validated against utterance meaning by `accept()` alone.
+Factual assertions remain unverified.
+
+`dialogue_intent_dataset.py` includes 8 pragmatic classes × 6 example
+families × 2 variants = 96 utterances. Split by whole example family:
+64 training and 32 development utterances, all classes in each split.
+The dataset is deliberately small, hand-authored and **not an independent
+holdout**. The character tokenizer includes *unlabelled development input
+characters* for fixed coverage; no development intent labels are exposed
+to the model during training, but this is not a strict unseen-vocabulary
+protocol. The evaluation reports exact intent-code rate, syntactic
+candidate acceptance, and importantly **accepted wrong-intent count**.
+Unlike Core+Frame SD surface-validation, the intent validator cannot tell
+that an in-vocabulary but incorrect label is semantically wrong.
+
+```powershell
+git pull origin main
+python -m unittest -v test_dialogue_intent_sd.py
+python dialogue_intent_sd.py --text "今日は疲れました。" --code "I(FEELING)"
+python dialogue_intent_dataset.py
+python train_dialogue_intent.py train --device auto --epochs 35
+python train_dialogue_intent.py evaluate --device auto
+```
+
+New files: `dialogue_intent_sd.py`, `dialogue_intent_dataset.py`,
+`train_dialogue_intent.py` and `test_dialogue_intent_sd.py`.
+Model/tokenizer/split/history are written under
+`model/dialogue-intent/`; the report is
+`results/dialogue_intent_dev.json`. Existing Role/Frame checkpoints and
+historical scores are unaffected.
+
+Next: independently authored intent paraphrases, multi-intent utterances,
+unknown/abstain cases, actual dialogue context, response-action selection,
+and grounding of conversational content with provenance and speaker roles.
