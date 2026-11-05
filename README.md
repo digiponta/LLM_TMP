@@ -1161,3 +1161,36 @@ accuracy estimate. Keep all text-bearing files out of Git and
 external publication; `results/` is ignored by Git.
 Test remains sealed. A separate unbiased, independently curated
 evaluation should follow the review-protocol freeze.
+
+
+## AI-proxy semantic review vs frozen model preference (Dev only)
+
+A separate **AI proxy** reviewed the 45 blinded Dev cases and assigned
+provisional A/B/BOTH/NEITHER/UNCLEAR labels; this is emphatically
+**not a human review** and the `review.label` fields remain null.
+The proxy-labeled JSON can be kept at
+`results/realpersonachat_semantic_review_ai_proxy.json` (never commit
+private text). Human-review audit status therefore stays PENDING.
+
+`compare_realpersonachat_ai_proxy.py` joins the AI-proxy JSON to
+the **existing two Full-Length Shuffle model reports** by the same
+deterministic hashed case ID used by `review_realpersonachat_semantics.py`.
+It verifies source/alternative prompt text, reference and donor across
+both models, refusing stale or mismatched cases. Only exclusive A/B
+proxy decisions enter the concordance denominator. BOTH/NEITHER/
+UNCLEAR are separately counted; model scores do not become labels.
+The output reports concordance of the baseline (10k) and candidate
+(30k) with the proxy choice plus directional change counts. This is
+**AI-to-model agreement** on a model-stratified *development sample*,
+not independent or human-validated semantic correctness.
+
+```powershell
+git pull origin main
+python -m unittest -v test_compare_realpersonachat_ai_proxy.py
+python compare_realpersonachat_ai_proxy.py --proxy results/realpersonachat_semantic_review_ai_proxy.json --baseline results/realpersonachat_fullshuffle_10k_dev.json --candidate results/realpersonachat_fullshuffle_30k_dev.json --output results/realpersonachat_ai_proxy_concordance.json
+```
+
+Do not run the earlier human-audit script expecting human approval
+from this proxy file. For a formal study, recruit an independent
+human reviewer and keep the fixed, blinded protocol separate from
+this AI-assisted development analysis.
