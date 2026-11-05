@@ -978,3 +978,55 @@ files are read. Test remains sealed for a future final evaluation.
 The diagnostic outputs are not compared across checkpoints as
 log-probabilities directly; each model's original-vs-alternative
 difference is measured on its own tokenizer/vocabulary.
+
+
+## Context Ablation: frozen 30k model / Full vs Last Turn vs No Context
+
+After the user's 30k run, Dev NLL decreased to 2.57207 with
+20/20 generated, 14 unique responses and a 15% most-common-response
+fraction. However, the previous last-turn-shuffle counterfactual gave
+10/20 positive differences, mean +0.017187; this was insufficient
+to establish context comprehension. It is not evidence that the
+model necessarily disregards context.
+
+The new `evaluate_realpersonachat_ablation.py` uses exactly the
+same saved checkpoint/tokenizer and selected *Dev* examples to score
+a frozen reference response (teacher-forced mean log probability)
+under three prompt conditions:
+
+1. `full`: the original two previous turns and the next-speaker marker.
+2. `last_turn`: only the most recent previous turn, same marker.
+3. `no_context`: conversation header and next-speaker marker only.
+
+Each reference is identical under all three conditions. It scores
+all three conditions per example, excludes a case from paired
+comparisons if **any** condition has unknown prompt/reference
+characters or exceeds the context, and reports all-three coverage,
+mean log probability, mean within-case differences, sign fractions,
+and count of cases with two original turns. This controls for
+different response lengths/vocabularies *within a single model*.
+The models were trained using Full Context, so shorter inputs are
+out-of-training-distribution: this diagnostic cannot independently
+prove semantic understanding or quantify a causal training benefit.
+All prompts/references in the output must remain local and private.
+No Test file is touched.
+
+Run the regression tests first:
+
+```powershell
+git pull origin main
+python -m unittest -v test_evaluate_realpersonachat_ablation.py test_evaluate_realpersonachat_context.py
+```
+
+Run both saved checkpoints with 200 fixed Dev items:
+
+```powershell
+python evaluate_realpersonachat_ablation.py --device auto --count 200 --outdir model/realpersonachat-pilot-10k --output results/realpersonachat_ablation_10k_dev.json
+python evaluate_realpersonachat_ablation.py --device auto --count 200 --outdir model/realpersonachat-pilot-30k --output results/realpersonachat_ablation_30k_dev.json
+```
+
+If either report already exists, explicitly pass `--overwrite`
+only when replacement is intended. Next: inspect cases where Full
+Context loses to No Context, then design targeted semantic,
+human-judged conversation-pair checks. Keep final independent Test
+sealed until the protocol is frozen.
