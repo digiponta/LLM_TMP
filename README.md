@@ -424,3 +424,51 @@ the evaluation command runs.
 The next phase is a human-authored frozen test split with new paraphrases,
 unseen compositions, unsupported syntax and explicit unknown cases, followed
 by testing a version trained on more natural language.
+
+
+## Active/passive semantic identity experiment (development)
+
+A conservative canonicalizer maps supported active and direct passive
+sentences to **the same** recursive linked SD structure. Example:
+
+```text
+猫が魚を食べる。         -> S(CAT,FISH,EAT)
+魚が猫に食べられる。     -> S(CAT,FISH,EAT)
+```
+
+Both map to the same interned SD ID, despite different original strings.
+This is an experimental step toward semantic identity across paraphrases,
+not general natural-language understanding or a claim that the statements
+are factually true. The voice and original surface are preserved in the
+analysis result; all expressions retain `verified_fact: false`.
+
+The current scope covers the existing finite lexicon, direct passives
+with explicit agent marked by `に`, and two supported conjunctions.
+The rule normalizer does **not use an LLM**. It conservatively rejects
+negation, questions, three-clause sentences, unknown words, and additional
+passive constructions. Natural passive morphology may be ambiguous
+depending on context, which is outside this experimental subset.
+
+Files:
+- `semantic_equivalence_sd.py`: voice normalization, SD interning,
+  canonical graph identity, and pairwise comparison.
+- `test_semantic_equivalence_sd.py`: positive/negative/unknown regression
+  tests.
+- `evaluate_semantic_equivalence.py`: small, non-independent development
+  comparison set (six positive, four negative, five unsupported pairs).
+
+Run:
+
+```powershell
+git pull origin main
+python -m unittest -v test_semantic_equivalence_sd.py
+python semantic_equivalence_sd.py --left "猫が魚を食べる。" --right "魚が猫に食べられる。"
+python evaluate_semantic_equivalence.py
+```
+
+Development output: `results/semantic_equivalence_development.json`.
+
+Next, combine this canonicalizer with an LLM proposer and evaluate frozen,
+human-authored paraphrases with independent semantic labels. The earlier
+94.4% compact-SD score remains a separate **development** baseline; it
+cannot be extrapolated to active/passive normalization.
