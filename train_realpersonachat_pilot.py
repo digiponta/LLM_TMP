@@ -36,41 +36,42 @@ def load_examples(path, limit, seed, context_turns, max_chars):
     if not path.is_file():
         raise FileNotFoundError(path)
     # Maintain the smallest hash-ranks; bounded memory for large corpora.
-    for line in path.open("r", encoding="utf-8-sig"):
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        if not isinstance(row.get("context"), list):
-            raise ValueError("INVALID_CONTEXT")
-        if not isinstance(row.get("response"), str):
-            raise ValueError("INVALID_RESPONSE")
-        if row.get("next_speaker") not in ("speaker_0", "speaker_1"):
-            raise ValueError("INVALID_SPEAKER")
-        key = canonical_key(row)
-        if key in seen:
-            raise ValueError("DUPLICATE_EXAMPLE_ID")
-        seen.add(key)
-        context = row["context"][-context_turns:]
-        if not context or not row["response"].strip():
-            continue
-        if any(t.get("speaker") not in ("speaker_0", "speaker_1") or
-               not isinstance(t.get("text"), str) for t in context):
-            raise ValueError("INVALID_CONTEXT_TURN")
-        # No mid-sentence truncation: reject oversized individual utterances.
-        if len(row["response"]) > max_chars or any(
-            len(t["text"]) > max_chars for t in context):
-            continue
-        digest = hashlib.sha256((str(seed) + ":" + key).encode()).hexdigest()
-        selected.append((digest, {
-            "dialogue_id": str(row["dialogue_id"]),
-            "turn_id": row["turn_id"],
-            "context": context,
-            "next_speaker": row["next_speaker"],
-            "response": row["response"],
-        }))
-        if len(selected) > 2 * limit:
-            selected.sort(key=lambda x: x[0])
-            selected = selected[:limit]
+    with path.open("r", encoding="utf-8-sig") as stream:
+        for line in stream:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if not isinstance(row.get("context"), list):
+                raise ValueError("INVALID_CONTEXT")
+            if not isinstance(row.get("response"), str):
+                raise ValueError("INVALID_RESPONSE")
+            if row.get("next_speaker") not in ("speaker_0", "speaker_1"):
+                raise ValueError("INVALID_SPEAKER")
+            key = canonical_key(row)
+            if key in seen:
+                raise ValueError("DUPLICATE_EXAMPLE_ID")
+            seen.add(key)
+            context = row["context"][-context_turns:]
+            if not context or not row["response"].strip():
+                continue
+            if any(t.get("speaker") not in ("speaker_0", "speaker_1") or
+                   not isinstance(t.get("text"), str) for t in context):
+                raise ValueError("INVALID_CONTEXT_TURN")
+            # No mid-sentence truncation: reject oversized individual utterances.
+            if len(row["response"]) > max_chars or any(
+                len(t["text"]) > max_chars for t in context):
+                continue
+            digest = hashlib.sha256((str(seed) + ":" + key).encode()).hexdigest()
+            selected.append((digest, {
+                "dialogue_id": str(row["dialogue_id"]),
+                "turn_id": row["turn_id"],
+                "context": context,
+                "next_speaker": row["next_speaker"],
+                "response": row["response"],
+            }))
+            if len(selected) > 2 * limit:
+                selected.sort(key=lambda x: x[0])
+                selected = selected[:limit]
     selected.sort(key=lambda x: x[0])
     return [r for _, r in selected[:limit]]
 
