@@ -172,6 +172,8 @@ def lookup_relation(previous_ref, current_ref, registry, **kwargs):
 
 def classify_topic_transition(intent_sd, state, registry, max_hops=2, max_nodes=64):
     """State is a read-only dict with history of prior validated utterances."""
+    if isinstance(intent_sd, dict) and FORBIDDEN & set(intent_sd):
+        raise ValueError("LABEL_LEAKAGE")
     _exact(intent_sd, ("schema_version", "utterance_id", "speech_act",
                        "intent", "topic_ref", "previous_topic_ref",
                        "context_reference", "topic_transition", "provenance"))
