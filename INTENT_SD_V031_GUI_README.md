@@ -40,3 +40,28 @@ This is blind annotation **of existing SD IDs**, not automated text-to-SD extrac
 ## Limitations
 
 At least one valid SD node must be supplied for meaningful selection. If no existing SD registry is available, build a read-only snapshot from the local existing SD store first; do not invent an example registry as if it were real. For every case, reviewers can assign `UNKNOWN` and explain why. The reviewer interface records **six topic references** and reasoning, not A/B correctness. Relation SD approval and graph traversal continue to be handled by the v0.3 runtime, not by this GUI.
+
+## Bootstrap sample registry (source-backed)
+
+The repository does not include the user's local, production SD records
+under `results/` (Git ignores that directory). To run the GUI without
+inventing any SD IDs, create a **sample-only** registry from the actual
+`recursive_sd.build_sample_graph()` node IDs:
+
+```powershell
+python build_linked_sd_registry_dev.py
+python -m unittest -v test_build_linked_sd_registry_dev.py
+python linked_sd_review_cli_v031.py inspect --registry results/linked_sd_registry_dev.json
+python review_linked_sd_gui_v031.py --registry results/linked_sd_registry_dev.json
+```
+
+The generator includes five existing concepts (CAT, DOG, FISH, BIRD,
+RICE) and two predicates (EAT, WATCH) with no approved relation SDs.
+The GUI allows choosing the five concept IDs; predicates are not Topic
+choices. For real-person dialogue annotation this bootstrap file is
+insufficient: replace it with a frozen registry exported from the actual
+approved SD store, preserving original IDs and provenance. Do not
+mistake a sample catalog for an extracted topic inventory. The builder
+refuses to overwrite an existing `results/linked_sd_registry_dev.json`
+unless explicitly passed `--overwrite`; replacing a registry will
+invalidate existing review fingerprints and may require a fresh review.
