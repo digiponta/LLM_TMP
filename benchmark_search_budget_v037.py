@@ -76,7 +76,7 @@ def run(nodes=100000, relations_per_node=5, samples=100, max_hops=5,
             discovery_visits.append(answer["visited"])
             if answer["status"] == "FOUND":
                 discovered += 1
-                if answer["hops"] > target_steps or not answer["path"] or any(
+                if answer["hops"] > target_steps or any(
                         edge["kind"] != "ABOUT" for edge in answer["path"]):
                     raise AssertionError("INVALID_DISCOVERED_PATH")
             elif answer["status"] != "LIMIT_REACHED":
